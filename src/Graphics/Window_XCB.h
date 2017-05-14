@@ -3,8 +3,7 @@
 
 #include "Window.h"
 
-#include "../Vulkan_XCB.h"
-#include "Renderer_Vulkan.h"
+#include "Renderer.h"
 
 extern "C" {
 #include <xcb/xcb.h>
@@ -58,11 +57,15 @@ namespace ProjectVoxel {
 
 				xcb_atom_t GetAtom(const char *name);
 
+				Connection &GetConnection() noexcept;
+
 				void HandleEvents();
 
 				void SetTitle(const std::string &title);
 
 				void SetVisible(bool visible);
+
+				operator xcb_window_t() noexcept;
 			};
 		}
 	}

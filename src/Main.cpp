@@ -9,7 +9,8 @@ int main(int argc, char **argv) {
 	try {
 		bool running = true;
 
-		ProjectVoxel::Graphics::Renderer *renderer = new ProjectVoxel::Graphics::Vulkan::Renderer;
+		std::unique_ptr<ProjectVoxel::Graphics::Renderer> renderer =
+				std::make_unique<ProjectVoxel::Graphics::Vulkan::Renderer>();
 
 
 		renderer->GetWindow()->AddCloseCallback([&running](const ProjectVoxel::Graphics::Window &window) {
@@ -49,15 +50,13 @@ int main(int argc, char **argv) {
 				lastSecond = now;
 			}
 		}
-
-		delete renderer;
 	}
 	catch (char *e) {
 		std::cerr << e << std::endl;
 		char c;
 		std::cin >> c;
 	}
-	catch (std::string &e) {
+	catch (std::string e) {
 		std::cerr << e << std::endl;
 		char c;
 		std::cin >> c;

@@ -4,6 +4,8 @@
 
 using namespace ProjectVoxel::Graphics::XCB;
 
+// <editor-fold Desc="Connection">
+
 Connection::Connection() {
 	mHandle = xcb_connect(nullptr, &mScreenp);
 }
@@ -24,6 +26,10 @@ Connection::operator xcb_connection_t *() {
 	return mHandle;
 }
 
+// </editor-fold>
+
+// <editor-fold Desc="Screen">
+
 Screen::Screen(Connection &connection, int screenp)
 		: mConnection(connection) {
 	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(connection));
@@ -36,6 +42,10 @@ Screen::Screen(Connection &connection, int screenp)
 Screen::operator xcb_screen_t *() {
 	return mHandle;
 }
+
+// </editor-fold>
+
+// <editor-fold Desc="Window">
 
 Window::Window()
 		: mConnection(), mScreen(mConnection.GetScreen()) {
@@ -89,6 +99,10 @@ xcb_atom_t Window::GetAtom(const char *name) {
 	return atom;
 }
 
+Connection &Window::GetConnection() noexcept {
+	return mConnection;
+}
+
 void Window::HandleEvents() {
 	xcb_generic_event_t *event;
 	xcb_client_message_event_t *cm;
@@ -137,3 +151,9 @@ void Window::SetVisible(bool visible) {
 
 	mConnection.Flush();
 }
+
+Window::operator xcb_window_t() noexcept {
+	return mHandle;
+}
+
+// </editor-fold>
