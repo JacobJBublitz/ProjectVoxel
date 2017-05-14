@@ -42,6 +42,9 @@ else ()
     endif ()
 endif ()
 
+find_package(Vulkan REQUIRED)
+add_include_dir(${Vulkan_INCLUDE_DIRS})
+
 find_package(XCB)
 if (XCB_FOUND)
     add_include_dir(${XCB_INCLUDE_DIRS})

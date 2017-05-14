@@ -8,5 +8,5 @@ add_subdirectory(src)
 
 add_executable(ProjectVoxel ${ProjectVoxel_SOURCES})
 target_compile_definitions(ProjectVoxel PUBLIC ${ProjectVoxel_DEFINITIONS})
-target_include_directories(ProjectVoxel PUBLIC SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/include" PUBLIC ${ProjectVoxel_INCLUDE_DIRS})
+target_include_directories(ProjectVoxel PUBLIC ${ProjectVoxel_INCLUDE_DIRS})
 target_link_libraries(ProjectVoxel PUBLIC ${ProjectVoxel_LINK_LIBRARIES})
