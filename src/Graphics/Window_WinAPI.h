@@ -10,13 +10,25 @@ extern "C" {
 
 namespace ProjectVoxel {
 	namespace Graphics {
-		struct Window::Internal {
-			HWND hwnd;
-
-			static LRESULT CALLBACK WinProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;
-		};
-
 		namespace WinAPI {
+			class Window final : public Graphics::Window {
+			private:
+				HWND mHWnd;
+
+				static LRESULT CALLBACK WinProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;
+			public:
+				Window();
+				~Window();
+				
+				HWND GetHWnd() noexcept;
+
+				void HandleEvents();
+				
+				void SetTitle(const std::string &title);
+				
+				void SetVisible(bool visible);
+			};
+
 			extern const wchar_t *WINDOW_CLASS_NAME;
 			extern const wchar_t *WINDOW_THIS_PROP;
 		}

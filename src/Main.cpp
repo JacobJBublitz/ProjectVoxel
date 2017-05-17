@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	catch (char *e) {
+	catch (const char *e) {
 		std::cerr << e << std::endl;
 		char c;
 		std::cin >> c;

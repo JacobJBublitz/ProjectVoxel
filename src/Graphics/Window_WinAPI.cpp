@@ -2,17 +2,17 @@
 
 #include <iostream>
 
+using namespace ProjectVoxel::Graphics::WinAPI;
+
 const wchar_t *ProjectVoxel::Graphics::WinAPI::WINDOW_CLASS_NAME = L"ProjectVoxelWindow";
 const wchar_t *ProjectVoxel::Graphics::WinAPI::WINDOW_THIS_PROP = L"ProjectVoxelThisProperty";
 
-ProjectVoxel::Graphics::Window::Window() 
-	: mInternal(std::make_unique<Internal>()) {
-
+Window::Window() {
 	WNDCLASSEX winClass = {};
-	if (!GetClassInfoEx(GetModuleHandle(nullptr), WinAPI::WINDOW_CLASS_NAME, &winClass)) {
+	if (!GetClassInfoEx(GetModuleHandle(nullptr), WINDOW_CLASS_NAME, &winClass)) {
 		winClass.cbSize = sizeof(WNDCLASSEX);
 		winClass.style = CS_OWNDC;
-		winClass.lpfnWndProc = Internal::WinProc;
+		winClass.lpfnWndProc = WinProc;
 		winClass.cbClsExtra = 0;
 		winClass.cbWndExtra = 0;
 		winClass.hInstance = GetModuleHandle(nullptr);
@@ -20,7 +20,7 @@ ProjectVoxel::Graphics::Window::Window()
 		winClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		winClass.hbrBackground = nullptr;
 		winClass.lpszMenuName = nullptr;
-		winClass.lpszClassName = WinAPI::WINDOW_CLASS_NAME;
+		winClass.lpszClassName = WINDOW_CLASS_NAME;
 		winClass.hIconSm = nullptr;
 
 		if (!RegisterClassEx(&winClass)) {
@@ -30,55 +30,48 @@ ProjectVoxel::Graphics::Window::Window()
 
 	DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_SYSMENU | WS_MINIMIZEBOX | WS_CAPTION | WS_MAXIMIZEBOX | WS_THICKFRAME;
 	DWORD exStyle = WS_EX_APPWINDOW;
-	mInternal->hwnd = CreateWindowEx(exStyle, WinAPI::WINDOW_CLASS_NAME, L"Project Voxel", style, 0, 0, 800, 600, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
-	if (!mInternal->hwnd) {
+	mHWnd = CreateWindowEx(exStyle, WINDOW_CLASS_NAME, L"Project Voxel", style, 0, 0, 800, 600, nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+	if (!mHWnd) {
 		throw "Failed to create window.";
 	}
 
-	SetProp(mInternal->hwnd, WinAPI::WINDOW_THIS_PROP, this);
+	SetProp(mHWnd, WINDOW_THIS_PROP, this);
 }
 
-ProjectVoxel::Graphics::Window::~Window() {
-	RemoveProp(mInternal->hwnd, WinAPI::WINDOW_THIS_PROP);
-	DestroyWindow(mInternal->hwnd);
+Window::~Window() {
+	RemoveProp(mHWnd, WINDOW_THIS_PROP);
+	DestroyWindow(mHWnd);
 }
 
-VkSurfaceKHR ProjectVoxel::Graphics::Window::CreateVulkanSurface(VkInstance instance) {
-	VkWin32SurfaceCreateInfoKHR createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	createInfo.pNext = nullptr;
-	createInfo.flags = 0;
-	createInfo.hinstance = GetModuleHandle(nullptr);
-	createInfo.hwnd = mInternal->hwnd;
-
-	VkSurfaceKHR surface;
-	VkResult result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface);
-	if (result != VK_SUCCESS) {
-		throw "Failed to create surface.";
-	}
-
-	return surface;
+HWND Window::GetHWnd() noexcept {
+	return mHWnd;
 }
 
-std::vector<const char *> ProjectVoxel::Graphics::Window::GetRequiredVulkanInstanceExtensions() {
-	return { "VK_KHR_win32_surface" };
-}
-
-void ProjectVoxel::Graphics::Window::HandleEvents() {
+void Window::HandleEvents() {
 	MSG msg;
 
-	while (PeekMessage(&msg, mInternal->hwnd, 0, 0, PM_REMOVE)) {
+	while (PeekMessage(&msg, mHWnd, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
 }
 
-void ProjectVoxel::Graphics::Window::SetVisible(bool visible) {
-	ShowWindow(mInternal->hwnd, visible ? SW_SHOW : SW_HIDE);
+void Window::SetTitle(const std::string &title) {
+	std::vector<wchar_t> wideTitle;
+	int wideTitleLength = MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, title.c_str(), -1, nullptr, 0);
+
+	wideTitle.resize(wideTitleLength, 0);
+	MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, title.c_str(), -1, wideTitle.data(), (int) wideTitle.size());
+
+	SetWindowText(mHWnd, wideTitle.data());
 }
 
-LRESULT CALLBACK ProjectVoxel::Graphics::Window::Internal::WinProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept {
-	Window *pThis = (Window *) GetProp(hwnd, WinAPI::WINDOW_THIS_PROP);
+void Window::SetVisible(bool visible) {
+	ShowWindow(mHWnd, visible ? SW_SHOW : SW_HIDE);
+}
+
+LRESULT CALLBACK Window::WinProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept {
+	Window *pThis = (Window *) GetProp(hwnd, WINDOW_THIS_PROP);
 	if (!pThis) {
 		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 	}

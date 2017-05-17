@@ -1,4 +1,9 @@
+#if ProjectVoxel_HAS_WinAPI
+#define VK_USE_PLATFORM_WIN32_KHR
 
+#include "Graphics/Window_WinAPI.h"
+
+#endif
 #ifdef ProjectVoxel_HAS_XCB
 #define VK_USE_PLATFORM_XCB_KHR
 
@@ -12,11 +17,17 @@
 
 #include <cstring>
 
+using namespace ProjectVoxel;
 using namespace ProjectVoxel::Vulkan;
 
-static ProjectVoxel::IO::Library vulkanLibrary("vulkan");
+#ifdef ProjectVoxel_HAS_WinAPI
+static constexpr const char *VULKAN_LIBRARY_NAME = "vulkan-1.dll";
+#else
+static constexpr const char *VULKAN_LIBRARY_NAME = "vulkan";
+#endif
 
 void *Internal::GetInstanceProcAddr(Instance instance, const char *pName) {
+	static ProjectVoxel::IO::Library vulkanLibrary(VULKAN_LIBRARY_NAME);
 	static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
 			(PFN_vkGetInstanceProcAddr) vulkanLibrary.GetSymbol("vkGetInstanceProcAddr");
 
@@ -56,18 +67,22 @@ Internal::Result Internal::EnumerateInstanceExtensionProperties(const char *pLay
 
 // <editor-fold Desc="GetInstanceProcAddr(instance, ...)">
 
+Internal::Result Internal::CreateWin32SurfaceKHR(Vulkan::Instance &instance, Win32SurfaceCreateInfoKHR *pCreateInfo, AllocationCallbacks *pAllocator, SurfaceKHR *pSurface) {
+	if (!instance.GetFuncPtrs().vkCreateWin32SurfaceKHR) {
+		instance.GetFuncPtrs().vkCreateWin32SurfaceKHR =
+				(ProcTypes::CreateWin32SurfaceKHR) GetInstanceProcAddr(instance.GetHandle(), "vkCreateWin32SurfaceKHR");
+	}
+
+	return instance.GetFuncPtrs().vkCreateWin32SurfaceKHR(instance.GetHandle(), pCreateInfo, pAllocator, pSurface);
+}
+
 Internal::Result Internal::CreateXcbSurfaceKHR(Vulkan::Instance &instance,
-                                               XcbSurfaceCreateInfo *pCreateInfo,
+                                               XcbSurfaceCreateInfoKHR *pCreateInfo,
                                                AllocationCallbacks *pAllocator,
                                                SurfaceKHR *pSurface) {
 	if (!instance.GetFuncPtrs().vkCreateXcbSurfaceKHR) {
-#ifdef VK_USE_PLATFORM_XCB_KHR
 		instance.GetFuncPtrs().vkCreateXcbSurfaceKHR =
-				(PFN_vkCreateXcbSurfaceKHR) GetInstanceProcAddr(instance.GetHandle(), "vkCreateXcbSurfaceKHR");
-#else
-		instance.GetFuncPtrs().vkCreateXcbSurfaceKHR =
-				(void *) GetInstanceProcAddr(instance.GetHandle(), "vkCreateXcbSurfaceKHR");
-#endif
+				(ProcTypes::CreateXcbSurfaceKHR) GetInstanceProcAddr(instance.GetHandle(), "vkCreateXcbSurfaceKHR");
 	}
 
 	return instance.GetFuncPtrs().vkCreateXcbSurfaceKHR(instance.GetHandle(), pCreateInfo, pAllocator, pSurface);
@@ -240,7 +255,25 @@ Instance &PhysicalDevice::GetInstance() noexcept {
 
 SurfaceKHR::SurfaceKHR(Instance *instance, Graphics::Window &window) {
 	mInstance = instance;
+#ifdef ProjectVoxel_HAS_WinAPI
+	try {
+		Graphics::WinAPI::Window &winAPIWindow = dynamic_cast<Graphics::WinAPI::Window &>(window);
 
+		Internal::Win32SurfaceCreateInfoKHR createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+		createInfo.hinstance = GetModuleHandle(nullptr);
+		createInfo.hwnd = winAPIWindow.GetHWnd();
+
+		Internal::Result result = Internal::CreateWin32SurfaceKHR(*instance, &createInfo, nullptr, &mHandle);
+		if (result == VK_SUCCESS) {
+			return;
+		}
+	} catch (std::bad_cast e) {
+		// Not a WinAPI window.
+	}
+#endif
 #ifdef ProjectVoxel_HAS_XCB
 	try {
 		Graphics::XCB::Window &xcbWindow = dynamic_cast<Graphics::XCB::Window &>(window);
@@ -269,6 +302,15 @@ SurfaceKHR::~SurfaceKHR() {
 }
 
 std::vector<const char *> SurfaceKHR::GetRequiredInstanceExtensions(const Graphics::Window &window) {
+#ifdef ProjectVoxel_HAS_WinAPI
+	try {
+		const Graphics::WinAPI::Window &winAPIWindow = dynamic_cast<const Graphics::WinAPI::Window &>(window);
+
+		return { "VK_KHR_surface", "VK_KHR_win32_surface" };
+	} catch (std::bad_cast e) {
+		// Not a WinAPI window.
+	}
+#endif
 #ifdef ProjectVoxel_HAS_XCB
 	try {
 		const Graphics::XCB::Window &xcbWindow = dynamic_cast<const Graphics::XCB::Window &>(window);

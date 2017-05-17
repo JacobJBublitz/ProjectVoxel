@@ -33,11 +33,24 @@ namespace ProjectVoxel {
 			using Result = ::VkResult;
 			using SurfaceKHR = ::VkSurfaceKHR;
 
-#ifdef VK_USE_PLATFORM_XCB_KHR
-			using XcbSurfaceCreateInfo = ::VkXcbSurfaceCreateInfoKHR;
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+			using Win32SurfaceCreateInfoKHR = ::VkWin32SurfaceCreateInfoKHR;
 #else
-			using XcbSurfaceCreateInfo = void;
+			using Win32SurfaceCreateInfoKHR = void;
 #endif
+#ifdef VK_USE_PLATFORM_XCB_KHR
+			using XcbSurfaceCreateInfoKHR = ::VkXcbSurfaceCreateInfoKHR;
+#else
+			using XcbSurfaceCreateInfoKHR = void;
+#endif
+			namespace ProcTypes {
+				typedef Result(VKAPI_PTR *CreateWin32SurfaceKHR)(Instance, Win32SurfaceCreateInfoKHR *,
+				                                                 AllocationCallbacks *, SurfaceKHR *);
+
+				typedef Result(VKAPI_PTR *CreateXcbSurfaceKHR)(Instance, XcbSurfaceCreateInfoKHR *,
+				                                               AllocationCallbacks *, SurfaceKHR *);
+			}
+
 			// </editor-fold>
 
 			void *GetInstanceProcAddr(Instance instance, const char *pName);
@@ -56,8 +69,13 @@ namespace ProjectVoxel {
 
 			// <editor-fold Desc="GetInstanceProcAddr(instance, ...)">
 
+			Result CreateWin32SurfaceKHR(Vulkan::Instance &instance,
+			                             Win32SurfaceCreateInfoKHR *pCreateInfo,
+			                             AllocationCallbacks *pAllocator,
+			                             SurfaceKHR *pSurface);
+
 			Result CreateXcbSurfaceKHR(Vulkan::Instance &instance,
-			                           XcbSurfaceCreateInfo *pCreateInfo,
+			                           XcbSurfaceCreateInfoKHR *pCreateInfo,
 			                           AllocationCallbacks *pAllocator,
 			                           SurfaceKHR *pSurface);
 
@@ -87,11 +105,8 @@ namespace ProjectVoxel {
 				PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties = nullptr;
 				PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties = nullptr;
 
-#ifdef VK_USE_PLATFORM_XCB_KHR
-				PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR = nullptr;
-#else
-				void *vkCreateXcbSurfaceKHR = nullptr;
-#endif
+				Internal::ProcTypes::CreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = nullptr;
+				Internal::ProcTypes::CreateXcbSurfaceKHR vkCreateXcbSurfaceKHR = nullptr;
 			};
 
 		private:
