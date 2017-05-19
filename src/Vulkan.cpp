@@ -67,7 +67,19 @@ Internal::Result Internal::EnumerateInstanceExtensionProperties(const char *pLay
 
 // <editor-fold Desc="GetInstanceProcAddr(instance, ...)">
 
-Internal::Result Internal::CreateWin32SurfaceKHR(Vulkan::Instance &instance, Win32SurfaceCreateInfoKHR *pCreateInfo, AllocationCallbacks *pAllocator, SurfaceKHR *pSurface) {
+Internal::Result Internal::CreateDevice(Vulkan::PhysicalDevice &physicalDevice, const DeviceCreateInfo *pCreateInfo,
+                                        const AllocationCallbacks *pAllocator, Device *pDevice) {
+	if (!physicalDevice.GetInstance().GetFuncPtrs().vkCreateDevice) {
+		physicalDevice.GetInstance().GetFuncPtrs().vkCreateDevice =
+				(PFN_vkCreateDevice) GetInstanceProcAddr(physicalDevice.GetInstance().GetHandle(), "vkCreateDevice");
+	}
+
+	return physicalDevice.GetInstance().GetFuncPtrs().vkCreateDevice(physicalDevice.GetHandle(), pCreateInfo,
+	                                                                 pAllocator, pDevice);
+}
+
+Internal::Result Internal::CreateWin32SurfaceKHR(Vulkan::Instance &instance, Win32SurfaceCreateInfoKHR *pCreateInfo,
+                                                 AllocationCallbacks *pAllocator, SurfaceKHR *pSurface) {
 	if (!instance.GetFuncPtrs().vkCreateWin32SurfaceKHR) {
 		instance.GetFuncPtrs().vkCreateWin32SurfaceKHR =
 				(ProcTypes::CreateWin32SurfaceKHR) GetInstanceProcAddr(instance.GetHandle(), "vkCreateWin32SurfaceKHR");
@@ -86,6 +98,15 @@ Internal::Result Internal::CreateXcbSurfaceKHR(Vulkan::Instance &instance,
 	}
 
 	return instance.GetFuncPtrs().vkCreateXcbSurfaceKHR(instance.GetHandle(), pCreateInfo, pAllocator, pSurface);
+}
+
+void Internal::DestroyDevice(Vulkan::Device &device, const AllocationCallbacks *pAllocator) {
+	if (!device.GetInstance().GetFuncPtrs().vkDestroyDevice) {
+		device.GetInstance().GetFuncPtrs().vkDestroyDevice = (PFN_vkDestroyDevice) GetInstanceProcAddr(
+				device.GetInstance().GetHandle(), "vkDestroyDevice");
+	}
+
+	return device.GetInstance().GetFuncPtrs().vkDestroyDevice(device.GetHandle(), pAllocator);
 }
 
 void Internal::DestroyInstance(Instance instance, const AllocationCallbacks *pAllocator) {
@@ -119,6 +140,26 @@ Internal::Result Internal::EnumeratePhysicalDevices(Vulkan::Instance &instance,
 	                                                         pPhysicalDevices);
 }
 
+void *Internal::GetDeviceProcAddr(Vulkan::Device &device, const char *pName) {
+	if (!device.GetInstance().GetFuncPtrs().vkGetDeviceProcAddr) {
+		device.GetInstance().GetFuncPtrs().vkGetDeviceProcAddr =
+				(PFN_vkGetDeviceProcAddr) GetInstanceProcAddr(device.GetInstance().GetHandle(), pName);
+	}
+
+	return (void *) device.GetInstance().GetFuncPtrs().vkGetDeviceProcAddr(device.GetHandle(), pName);
+}
+
+void Internal::GetPhysicalDeviceFeatures(Vulkan::PhysicalDevice &physicalDevice, PhysicalDeviceFeatures *pFeatures) {
+	if (!physicalDevice.GetInstance().GetFuncPtrs().vkGetPhysicalDeviceFeatures) {
+		physicalDevice.GetInstance().GetFuncPtrs().vkGetPhysicalDeviceFeatures =
+				(PFN_vkGetPhysicalDeviceFeatures) GetInstanceProcAddr(physicalDevice.GetInstance().GetHandle(),
+				                                                      "vkGetPhysicalDeviceFeatures");
+	}
+
+	return physicalDevice.GetInstance().GetFuncPtrs().vkGetPhysicalDeviceFeatures(physicalDevice.GetHandle(),
+	                                                                              pFeatures);
+}
+
 void Internal::GetPhysicalDeviceProperties(Vulkan::PhysicalDevice &physicalDevice,
                                            PhysicalDeviceProperties *pProperties) {
 	if (!physicalDevice.GetInstance().GetFuncPtrs().vkGetPhysicalDeviceProperties) {
@@ -145,6 +186,80 @@ void Internal::GetPhysicalDeviceQueueFamilyProperties(Vulkan::PhysicalDevice &ph
 			physicalDevice.GetHandle(),
 			pQueueFamilyPropertyCount,
 			pQueueFamilyProperties);
+}
+
+Internal::Result Internal::GetPhysicalDeviceSurfaceSupportKHR(Vulkan::PhysicalDevice &physicalDevice,
+                                                              uint32_t queueFamilyIndex, Vulkan::SurfaceKHR &surface,
+                                                              bool *pSupported) {
+	if (!physicalDevice.GetInstance().GetFuncPtrs().vkGetPhysicalDeviceSurfaceSupportKHR) {
+		physicalDevice.GetInstance().GetFuncPtrs().vkGetPhysicalDeviceSurfaceSupportKHR =
+				(PFN_vkGetPhysicalDeviceSurfaceSupportKHR) GetInstanceProcAddr(physicalDevice.GetInstance().GetHandle(),
+				                                                               "vkGetPhysicalDeviceSurfaceSupportKHR");
+	}
+
+	VkBool32 supported;
+	Internal::Result result = physicalDevice.GetInstance().GetFuncPtrs().vkGetPhysicalDeviceSurfaceSupportKHR(
+			physicalDevice.GetHandle(), queueFamilyIndex, surface.GetHandle(), &supported);
+	*pSupported = supported == VK_TRUE;
+	return result;
+}
+
+// </editor-fold>
+
+// <editor-fold Desc="Device">
+
+Device::Device(PhysicalDevice &physicalDevice, const std::vector<uint32_t> &queues,
+               const std::vector<const char *> &extensions, const std::vector<const char *> &layers)
+		: mPhysicalDevice(physicalDevice) {
+	std::vector<Internal::DeviceQueueCreateInfo> queueCreateInfos;
+
+	std::vector<std::vector<float>> queuePriorities(queues.size());
+
+	for (uint32_t queueIndex = 0; queueIndex < queues.size(); queueIndex++) {
+		if (queues[queueIndex] > 0) {
+			queuePriorities[queueIndex] = std::vector<float>(queues[queueIndex], 1.0f);
+
+			Internal::DeviceQueueCreateInfo createInfo = {};
+			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			createInfo.pNext = nullptr;
+			createInfo.flags = 0;
+			createInfo.queueFamilyIndex = queueIndex;
+			createInfo.queueCount = queues[queueIndex];
+			createInfo.pQueuePriorities = queuePriorities[queueIndex].data();
+
+			queueCreateInfos.push_back(createInfo);
+		}
+	}
+
+	Internal::DeviceCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createInfo.pNext = nullptr;
+	createInfo.flags = 0;
+	createInfo.queueCreateInfoCount = (uint32_t) queueCreateInfos.size();
+	createInfo.pQueueCreateInfos = queueCreateInfos.data();
+	createInfo.enabledLayerCount = (uint32_t) layers.size();
+	createInfo.ppEnabledLayerNames = layers.data();
+	createInfo.enabledExtensionCount = (uint32_t) extensions.size();
+	createInfo.ppEnabledExtensionNames = extensions.data();
+	createInfo.pEnabledFeatures = &mPhysicalDevice.GetFeatures();
+
+	Internal::Result result = Internal::CreateDevice(mPhysicalDevice, &createInfo, nullptr, &mHandle);
+	if (result != VK_SUCCESS) {
+		throw "Failed to create device.";
+	}
+}
+
+Device::~Device() {
+	Internal::DestroyDevice(*this, nullptr);
+	mHandle = nullptr;
+}
+
+Internal::Device Device::GetHandle() noexcept {
+	return mHandle;
+}
+
+Instance &Device::GetInstance() noexcept {
+	return mPhysicalDevice.GetInstance();
 }
 
 // </editor-fold>
@@ -179,6 +294,7 @@ Instance::Instance(const std::vector<const char *> &extensions, const std::vecto
 
 Instance::~Instance() {
 	Internal::DestroyInstance(mHandle, nullptr);
+	mHandle = nullptr;
 }
 
 Instance::FuncPtrs &Instance::GetFuncPtrs() noexcept {
@@ -239,6 +355,13 @@ bool Instance::IsExtensionSupported(const char *extension, const char *layer) {
 PhysicalDevice::PhysicalDevice(Instance *instance, Internal::PhysicalDevice handle) {
 	mInstance = instance;
 	mHandle = handle;
+
+	Internal::GetPhysicalDeviceFeatures(*this, &mFeatures);
+	Internal::GetPhysicalDeviceProperties(*this, &mProperties);
+}
+
+const Internal::PhysicalDeviceFeatures &PhysicalDevice::GetFeatures() const noexcept {
+	return mFeatures;
 }
 
 Internal::PhysicalDevice PhysicalDevice::GetHandle() noexcept {
@@ -247,6 +370,42 @@ Internal::PhysicalDevice PhysicalDevice::GetHandle() noexcept {
 
 Instance &PhysicalDevice::GetInstance() noexcept {
 	return *mInstance;
+}
+
+std::vector<uint32_t> PhysicalDevice::GetPresentQueues(SurfaceKHR &surface) {
+	uint32_t queueCount;
+	Internal::GetPhysicalDeviceQueueFamilyProperties(*this, &queueCount, nullptr);
+
+	std::vector<uint32_t> queuesSupportingSurface;
+
+	for (uint32_t i = 0; i < queueCount; i++) {
+		bool supportsSurface;
+
+		Internal::Result result = Internal::GetPhysicalDeviceSurfaceSupportKHR(*this, i, surface, &supportsSurface);
+		if (result != VK_SUCCESS) {
+			throw "Failed to check if queue supports surface.";
+		}
+
+		if (supportsSurface) {
+			queuesSupportingSurface.push_back(i);
+		}
+	}
+
+	return std::move(queuesSupportingSurface);
+}
+
+const Internal::PhysicalDeviceProperties &PhysicalDevice::GetProperties() const noexcept {
+	return mProperties;
+}
+
+std::vector<Internal::QueueFamilyProperties> PhysicalDevice::GetQueueProperties() {
+	uint32_t queueCount;
+	Internal::GetPhysicalDeviceQueueFamilyProperties(*this, &queueCount, nullptr);
+
+	std::vector<Internal::QueueFamilyProperties> queues(queueCount);
+	Internal::GetPhysicalDeviceQueueFamilyProperties(*this, &queueCount, queues.data());
+
+	return std::move(queues);
 }
 
 // </editor-fold>
@@ -299,6 +458,11 @@ SurfaceKHR::SurfaceKHR(Instance *instance, Graphics::Window &window) {
 
 SurfaceKHR::~SurfaceKHR() {
 	Internal::DestroySurfaceKHR(*mInstance, mHandle, nullptr);
+	mHandle = nullptr;
+}
+
+Internal::SurfaceKHR SurfaceKHR::GetHandle() noexcept {
+	return mHandle;
 }
 
 std::vector<const char *> SurfaceKHR::GetRequiredInstanceExtensions(const Graphics::Window &window) {

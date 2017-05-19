@@ -13,8 +13,9 @@ namespace ProjectVoxel {
 			private:
 				std::shared_ptr<Window> mWindow;
 
-				std::unique_ptr<Vulkan::Instance> mInstance;
-				std::unique_ptr<Vulkan::SurfaceKHR> mSurface;
+				std::unique_ptr<Instance> mInstance;
+				std::unique_ptr<SurfaceKHR> mSurface;
+				std::unique_ptr<Device> mDevice;
 			public:
 				Renderer();
 				~Renderer();

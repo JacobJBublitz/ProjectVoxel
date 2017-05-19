@@ -13,6 +13,8 @@ extern "C" {
 
 namespace ProjectVoxel {
 	namespace Vulkan {
+		class Device;
+
 		class Instance;
 
 		class PhysicalDevice;
@@ -24,10 +26,13 @@ namespace ProjectVoxel {
 			using AllocationCallbacks = ::VkAllocationCallbacks;
 			using ApplicationInfo = ::VkApplicationInfo;
 			using Device = ::VkDevice;
+			using DeviceCreateInfo = ::VkDeviceCreateInfo;
+			using DeviceQueueCreateInfo = ::VkDeviceQueueCreateInfo;
 			using ExtensionProperties = ::VkExtensionProperties;
 			using Instance = ::VkInstance;
 			using InstanceCreateInfo = ::VkInstanceCreateInfo;
 			using PhysicalDevice = ::VkPhysicalDevice;
+			using PhysicalDeviceFeatures = ::VkPhysicalDeviceFeatures;
 			using PhysicalDeviceProperties = ::VkPhysicalDeviceProperties;
 			using QueueFamilyProperties = ::VkQueueFamilyProperties;
 			using Result = ::VkResult;
@@ -69,6 +74,9 @@ namespace ProjectVoxel {
 
 			// <editor-fold Desc="GetInstanceProcAddr(instance, ...)">
 
+			Result CreateDevice(Vulkan::PhysicalDevice &physicalDevice, const DeviceCreateInfo *pCreateInfo,
+			                    const AllocationCallbacks *pAllocator, Device *pDevice);
+
 			Result CreateWin32SurfaceKHR(Vulkan::Instance &instance,
 			                             Win32SurfaceCreateInfoKHR *pCreateInfo,
 			                             AllocationCallbacks *pAllocator,
@@ -79,6 +87,8 @@ namespace ProjectVoxel {
 			                           AllocationCallbacks *pAllocator,
 			                           SurfaceKHR *pSurface);
 
+			void DestroyDevice(Vulkan::Device &device, const AllocationCallbacks *pAllocator);
+
 			void DestroyInstance(Instance instance, const AllocationCallbacks *pAllocator);
 
 			void DestroySurfaceKHR(Vulkan::Instance &instance, SurfaceKHR surface, AllocationCallbacks *pAllocator);
@@ -87,6 +97,11 @@ namespace ProjectVoxel {
 			                                uint32_t *pPhysicalDeviceCount,
 			                                PhysicalDevice *pPhysicalDevices);
 
+			void *GetDeviceProcAddr(Vulkan::Device &device, const char *pName);
+
+			void GetPhysicalDeviceFeatures(Vulkan::PhysicalDevice &physicalDevice,
+			                               PhysicalDeviceFeatures *pFeatures);
+
 			void GetPhysicalDeviceProperties(Vulkan::PhysicalDevice &physicalDevice,
 			                                 PhysicalDeviceProperties *pProperties);
 
@@ -94,16 +109,24 @@ namespace ProjectVoxel {
 			                                            uint32_t *pQueueFamilyPropertyCount,
 			                                            QueueFamilyProperties *pQueueFamilyProperties);
 
+			Result GetPhysicalDeviceSurfaceSupportKHR(Vulkan::PhysicalDevice &physicalDevice, uint32_t queueFamilyIndex,
+			                                          Vulkan::SurfaceKHR &surface, bool *pSupported);
+
 			// </editor-fold>
 		}
 
 		class Instance final {
 		public:
 			struct FuncPtrs {
+				PFN_vkCreateDevice vkCreateDevice = nullptr;
+				PFN_vkDestroyDevice vkDestroyDevice = nullptr;
 				PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
 				PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices = nullptr;
+				PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;
+				PFN_vkGetPhysicalDeviceFeatures vkGetPhysicalDeviceFeatures = nullptr;
 				PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties = nullptr;
 				PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties = nullptr;
+				PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR = nullptr;
 
 				Internal::ProcTypes::CreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = nullptr;
 				Internal::ProcTypes::CreateXcbSurfaceKHR vkCreateXcbSurfaceKHR = nullptr;
@@ -130,13 +153,39 @@ namespace ProjectVoxel {
 
 		class PhysicalDevice final {
 		private:
+			Internal::PhysicalDeviceFeatures mFeatures;
 			Internal::PhysicalDevice mHandle;
 			Instance *mInstance;
+			Internal::PhysicalDeviceProperties mProperties;
 
 		public:
 			PhysicalDevice(Instance *instance, Internal::PhysicalDevice handle);
 
+			const Internal::PhysicalDeviceFeatures &GetFeatures() const noexcept;
+
 			Internal::PhysicalDevice GetHandle() noexcept;
+
+			Instance &GetInstance() noexcept;
+
+			std::vector<uint32_t> GetPresentQueues(SurfaceKHR &surface);
+
+			const Internal::PhysicalDeviceProperties &GetProperties() const noexcept;
+
+			std::vector<Internal::QueueFamilyProperties> GetQueueProperties();
+		};
+
+		class Device final {
+		private:
+			Internal::Device mHandle;
+			PhysicalDevice &mPhysicalDevice;
+
+		public:
+			Device(PhysicalDevice &physicalDevice, const std::vector<uint32_t> &queues,
+			       const std::vector<const char *> &extensions, const std::vector<const char *> &layers);
+
+			~Device();
+
+			Internal::Device GetHandle() noexcept;
 
 			Instance &GetInstance() noexcept;
 		};
@@ -150,6 +199,8 @@ namespace ProjectVoxel {
 			SurfaceKHR(Instance *instance, Graphics::Window &window);
 
 			~SurfaceKHR();
+
+			Internal::SurfaceKHR GetHandle() noexcept;
 
 			static std::vector<const char *> GetRequiredInstanceExtensions(const Graphics::Window &window);
 		};
