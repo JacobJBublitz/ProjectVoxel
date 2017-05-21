@@ -1,15 +1,7 @@
-#if ProjectVoxel_HAS_WinAPI
-#define VK_USE_PLATFORM_WIN32_KHR
-
-#include "Graphics/Window_WinAPI.h"
-
-#endif
-#ifdef ProjectVoxel_HAS_XCB
-#define VK_USE_PLATFORM_XCB_KHR
-
-#include "Graphics/Window_XCB.h"
-
-#endif
+#define GLFW_INCLUDE_VULKAN
+extern "C" {
+#include <GLFW/glfw3.h>
+}
 
 #include "Vulkan.h"
 
@@ -414,46 +406,11 @@ std::vector<Internal::QueueFamilyProperties> PhysicalDevice::GetQueueProperties(
 
 SurfaceKHR::SurfaceKHR(Instance *instance, Graphics::Window &window) {
 	mInstance = instance;
-#ifdef ProjectVoxel_HAS_WinAPI
-	try {
-		Graphics::WinAPI::Window &winAPIWindow = dynamic_cast<Graphics::WinAPI::Window &>(window);
 
-		Internal::Win32SurfaceCreateInfoKHR createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-		createInfo.pNext = nullptr;
-		createInfo.flags = 0;
-		createInfo.hinstance = GetModuleHandle(nullptr);
-		createInfo.hwnd = winAPIWindow.GetHWnd();
-
-		Internal::Result result = Internal::CreateWin32SurfaceKHR(*instance, &createInfo, nullptr, &mHandle);
-		if (result == VK_SUCCESS) {
-			return;
-		}
-	} catch (std::bad_cast e) {
-		// Not a WinAPI window.
+	Internal::Result result = glfwCreateWindowSurface(instance->GetHandle(), window.GetHandle(), nullptr, &mHandle);
+	if (result != VK_SUCCESS) {
+		throw "Failed to create surface.";
 	}
-#endif
-#ifdef ProjectVoxel_HAS_XCB
-	try {
-		Graphics::XCB::Window &xcbWindow = dynamic_cast<Graphics::XCB::Window &>(window);
-
-		VkXcbSurfaceCreateInfoKHR createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-		createInfo.pNext = nullptr;
-		createInfo.flags = 0;
-		createInfo.connection = xcbWindow.GetConnection();
-		createInfo.window = xcbWindow;
-
-		Internal::Result result = Internal::CreateXcbSurfaceKHR(*instance, &createInfo, nullptr, &mHandle);
-		if (result == VK_SUCCESS) {
-			return;
-		}
-	} catch (std::bad_cast e) {
-		// Not a XCB window.
-	}
-#endif
-
-	throw "Failed to create a surface.";
 }
 
 SurfaceKHR::~SurfaceKHR() {
@@ -466,26 +423,17 @@ Internal::SurfaceKHR SurfaceKHR::GetHandle() noexcept {
 }
 
 std::vector<const char *> SurfaceKHR::GetRequiredInstanceExtensions(const Graphics::Window &window) {
-#ifdef ProjectVoxel_HAS_WinAPI
-	try {
-		const Graphics::WinAPI::Window &winAPIWindow = dynamic_cast<const Graphics::WinAPI::Window &>(window);
+	uint32_t extCount;
+	glfwGetRequiredInstanceExtensions(&extCount);
 
-		return { "VK_KHR_surface", "VK_KHR_win32_surface" };
-	} catch (std::bad_cast e) {
-		// Not a WinAPI window.
+	std::vector<const char *> extensions(extCount);
+	const char **extPtr = glfwGetRequiredInstanceExtensions(&extCount);
+
+	for (uint32_t i = 0; i < extCount; i++) {
+		extensions[i] = extPtr[i];
 	}
-#endif
-#ifdef ProjectVoxel_HAS_XCB
-	try {
-		const Graphics::XCB::Window &xcbWindow = dynamic_cast<const Graphics::XCB::Window &>(window);
 
-		return {"VK_KHR_surface", "VK_KHR_xcb_surface"};
-	} catch (std::bad_cast e) {
-		// Not a XCB window.
-	}
-#endif
-
-	return {};
+	return std::move(extensions);
 }
 
 // </editor-fold>

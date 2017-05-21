@@ -1,0 +1,4 @@
+[submodule "Libraries/glfw"]
+	path = Libraries/glfw
+	url = https://github.com/glfw/glfw.git
+	branch = origin/3.2.1

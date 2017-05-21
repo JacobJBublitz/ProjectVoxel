@@ -11,7 +11,7 @@ namespace ProjectVoxel {
 
 			class Renderer final : public Graphics::Renderer {
 			private:
-				std::shared_ptr<Window> mWindow;
+				Window mWindow;
 
 				std::unique_ptr<Instance> mInstance;
 				std::unique_ptr<SurfaceKHR> mSurface;
@@ -20,7 +20,7 @@ namespace ProjectVoxel {
 				Renderer();
 				~Renderer();
 
-				std::shared_ptr<Window> GetWindow() noexcept;
+				Window &GetWindow() noexcept;
 
 				void SwapBuffers();
 			};

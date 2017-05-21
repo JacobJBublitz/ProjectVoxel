@@ -8,7 +8,7 @@ namespace ProjectVoxel {
 		public:
 			virtual ~Renderer();
 
-			virtual std::shared_ptr<Window> GetWindow() noexcept = 0;
+			virtual Window &GetWindow() noexcept = 0;
 
 			virtual void SwapBuffers() = 0;
 		};

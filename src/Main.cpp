@@ -13,11 +13,11 @@ int main(int argc, char **argv) {
 				std::make_unique<ProjectVoxel::Graphics::Vulkan::Renderer>();
 
 
-		renderer->GetWindow()->AddCloseCallback([&running](const ProjectVoxel::Graphics::Window &window) {
+		renderer->GetWindow().AddCloseCallback([&running](const ProjectVoxel::Graphics::Window &window) {
 			running = false;
 		});
 
-		renderer->GetWindow()->SetVisible(true);
+		renderer->GetWindow().SetVisible(true);
 
 		auto lastFrame = std::chrono::high_resolution_clock::now();
 		auto lastTick = std::chrono::high_resolution_clock::now();
@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
 
 			auto delta = now - lastTick;
 			while (delta >= std::chrono::seconds(1) / 20.0) {
-				renderer->GetWindow()->HandleEvents();
+				renderer->GetWindow().HandleEvents();
 
 				_tps++;
 				lastTick = now;

@@ -5,22 +5,33 @@
 #include <string>
 #include <vector>
 
+#define GLFW_INCLUDE_NONE
+extern "C" {
+#include <GLFW/glfw3.h>
+}
+
 namespace ProjectVoxel {
 	namespace Graphics {
-		class Window {
-		protected:
+		class Window final {
+		private:
 			std::vector<std::function<void(const Window &)>> mCloseCallbacks;
-		public:
-			virtual ~Window();
 
-			static std::shared_ptr<Window> Create();
+			GLFWwindow *mHandle;
+
+			Window(bool openGLContext, uint8_t major, uint8_t minor);
+		public:
+			Window();
+			Window(uint8_t major, uint8_t minor);
+			~Window();
 
 			void AddCloseCallback(std::function<void(const Window &)> callback);
 
-			virtual void HandleEvents() = 0;
+			GLFWwindow *GetHandle() noexcept;
 
-			virtual void SetTitle(const std::string &title) = 0;
-			virtual void SetVisible(bool visible) = 0;
+			void HandleEvents();
+
+			void SetTitle(const std::string &title);
+			void SetVisible(bool visible);
 		};
 	}
 }

@@ -48,14 +48,6 @@ endif ()
 find_package(Vulkan REQUIRED)
 add_include_dir(${Vulkan_INCLUDE_DIRS})
 
-find_package(XCB)
-if (XCB_FOUND)
-    add_include_dir(${XCB_INCLUDE_DIRS})
-    add_link_library(${XCB_LIBRARIES})
-    add_definition("ProjectVoxel_HAS_XCB")
-    list(APPEND _platforms XCB)
-endif ()
-
 add_subdirectory(Graphics)
 add_subdirectory(IO)
 

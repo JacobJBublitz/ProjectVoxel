@@ -23,9 +23,9 @@ static size_t _getDeviceScore(const PhysicalDevice &physicalDevice) {
 }
 
 Renderer::Renderer()
-		: mWindow(Window::Create()) {
+		: mWindow() {
 	std::vector<const char *> extensions, layers;
-	for (const auto &ext : Vulkan::SurfaceKHR::GetRequiredInstanceExtensions(*mWindow.get())) {
+	for (const auto &ext : Vulkan::SurfaceKHR::GetRequiredInstanceExtensions(mWindow)) {
 		if (!Vulkan::Instance::IsExtensionSupported(ext)) {
 			throw "Window does not support Vulkan.";
 		}
@@ -35,7 +35,7 @@ Renderer::Renderer()
 
 	mInstance = std::make_unique<Instance>(extensions, layers);
 
-	mSurface = std::make_unique<SurfaceKHR>(mInstance.get(), *mWindow.get());
+	mSurface = std::make_unique<SurfaceKHR>(mInstance.get(), mWindow);
 
 	auto devices = mInstance->GetPhysicalDevices();
 
@@ -78,7 +78,7 @@ Renderer::Renderer()
 
 Renderer::~Renderer() {}
 
-std::shared_ptr<ProjectVoxel::Graphics::Window> Renderer::GetWindow() noexcept {
+ProjectVoxel::Graphics::Window &Renderer::GetWindow() noexcept {
 	return mWindow;
 }
 
