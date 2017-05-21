@@ -11,7 +11,7 @@ list(APPEND ProjectVoxel_LINK_LIBRARIES glfw)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules")
 
-add_subdirectory(src)
+add_subdirectory(Sources)
 
 add_executable(ProjectVoxel ${ProjectVoxel_SOURCES})
 set_target_properties(ProjectVoxel PROPERTIES CXX_STANDARD 14)
